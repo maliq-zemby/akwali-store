@@ -4,6 +4,8 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { UserProfile } from '@/src/hooks/useAuth';
 import { motion } from 'motion/react';
 import { Package, Image as ImageIcon, CheckCircle, Upload, X, FileVideo, Store } from 'lucide-react';
+import { storage } from '@/src/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export const ProductForm: React.FC<{ profile: UserProfile; onComplete: () => void }> = ({ profile, onComplete }) => {
   const [title, setTitle] = useState('');
@@ -32,19 +34,15 @@ export const ProductForm: React.FC<{ profile: UserProfile; onComplete: () => voi
   };
 
   const uploadFile = async (file: File): Promise<{ url: string; type: string }> => {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData,
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const type = file.type.startsWith('video') ? 'video' : 'image';
+        resolve({ url: reader.result as string, type });
+      };
+      reader.onerror = (error) => reject(error);
+      reader.readAsDataURL(file);
     });
-
-    if (!response.ok) {
-      throw new Error('Upload failed');
-    }
-
-    return await response.json();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,9 +74,9 @@ export const ProductForm: React.FC<{ profile: UserProfile; onComplete: () => voi
       setTimeout(() => {
         onComplete();
       }, 1500);
-    } catch (err) {
-      console.error(err);
-      alert('Erreur lors de la publication. Veuillez réessayer.');
+} catch (err: any) {
+      console.error("Erreur complète :", err);
+      alert("Erreur : " + (err?.message || "Une erreur est survenue"));
       setLoading(false);
     }
   };
