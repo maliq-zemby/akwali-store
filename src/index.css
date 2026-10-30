@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gabon-green: #00844F;
+  --color-gabon-green-light: #009E60;
+  --color-gabon-yellow: #FFD700;
+  --color-gabon-blue: #2A64B2;
+  --color-gabon-blue-dark: #1E4D8C;
+  
+  --font-display: "Plus Jakarta Sans", sans-serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+}
+
+:root {
+  --gabon-green: #00844F;
+  --gabon-yellow: #FFD700;
+  --gabon-blue: #2A64B2;
+  --surface-50: #F8FAFC;
+  --surface-100: #F1F5F9;
+  --surface-200: #E2E8F0;
+}
+
+body {
+  @apply bg-[#F8FAFC] text-slate-900 antialiased font-body;
+}
+
+.glass {
+  @apply bg-white/80 backdrop-blur-md border border-white/20;
+}
+
+.premium-shadow {
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05), 0 4px 10px -5px rgba(0, 0, 0, 0.02);
+}
+

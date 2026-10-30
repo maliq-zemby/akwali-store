@@ -1,0 +1,6 @@
+{
+  "name": "AKWALI STORE",
+  "description": "Marketplace e-commerce moderne aux couleurs du Gabon avec synchronisation en temps réel, PWA et chat intégré.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
