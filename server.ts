@@ -46,17 +46,55 @@ async function startServer() {
   });
 
   // Email Notification Webhook / API
-  app.post('/api/notify', (req, res) => {
+  app.post('/api/notify', async (req, res) => {
     const { type, email, details } = req.body;
-    console.log(`[EMAIL NOTIFICATION] To: maliqzemby8@gmail.com`);
-    console.log(`[EVENT] ${type}`);
-    console.log(`[USER] ${email}`);
-    if (details) console.log(`[DETAILS]`, details);
     
-    // In a real app, you'd use a service like Resend, SendGrid, or AWS SES here.
-    // For this build, we simulate the webhook/cloud function as requested.
+    console.log(`[EVENT] ${type} for ${email}`);
+
+    if (type === 'SIGNUP') {
+      try {
+        const nodemailer = await import('nodemailer');
+        
+        // Configuration du transporteur (SMTP)
+        // Note: Utilisez des variables d'environnement pour la sécurité
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: process.env.EMAIL_USER, // Votre email (ex: maliqzemby8@gmail.com)
+            pass: process.env.EMAIL_PASS  // Votre mot de passe d'application Google
+          }
+        });
+
+        const mailOptions = {
+          from: `"AKWALI STORE" <${process.env.EMAIL_USER}>`,
+          to: 'maliqzemby8@gmail.com',
+          subject: '🔔 Nouvelle Inscription - AKWALI STORE',
+          html: `
+            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #3A75C4;">Nouvel utilisateur inscrit !</h2>
+              <p>Un nouveau compte vient d'être créé sur <strong>AKWALI STORE</strong>.</p>
+              <hr />
+              <p><strong>Email :</strong> ${email}</p>
+              <p><strong>Rôle :</strong> ${details?.role || 'Non spécifié'}</p>
+              <p><strong>Date :</strong> ${new Date().toLocaleString('fr-FR')}</p>
+              <hr />
+              <p style="font-size: 12px; color: #666;">Ceci est une notification automatique de votre application.</p>
+            </div>
+          `
+        };
+
+        if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+          await transporter.sendMail(mailOptions);
+          console.log(`[SUCCESS] Email sent to maliqzemby8@gmail.com`);
+        } else {
+          console.warn(`[SKIP] Nodemailer not configured: EMAIL_USER or EMAIL_PASS missing in .env`);
+        }
+      } catch (error) {
+        console.error('[ERROR] Failed to send email:', error);
+      }
+    }
     
-    res.status(200).json({ success: true, message: 'Notification logged' });
+    res.status(200).json({ success: true, message: 'Notification processed' });
   });
 
   const vite = await createViteServer({
