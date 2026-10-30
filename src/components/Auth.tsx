@@ -4,7 +4,9 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'fire
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { notifyEvent } from '@/src/lib/notifications';
 import { motion } from 'motion/react';
-import { ShoppingBag, User, Store, Mail, Lock, Phone, MapPin, Building2 } from 'lucide-react';
+import { ShoppingBag, User, Store, Mail, Lock, Phone, MapPin, Building2, Camera, X, Loader2 } from 'lucide-react';
+
+import { compressImage } from '@/src/lib/image-utils';
 
 export const Auth: React.FC<{ onAuth: () => void }> = ({ onAuth }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -12,14 +14,33 @@ export const Auth: React.FC<{ onAuth: () => void }> = ({ onAuth }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   
   const [shopName, setShopName] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        setLoading(true);
+        const compressedBase64 = await compressImage(file, 400, 400, 0.6);
+        setPhotoPreview(compressedBase64);
+      } catch (err) {
+        console.error("Compression error:", err);
+        alert("Erreur lors de la préparation de l'image.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
@@ -31,6 +52,9 @@ export const Auth: React.FC<{ onAuth: () => void }> = ({ onAuth }) => {
           uid: user.uid,
           email: user.email,
           role,
+          photoURL: photoPreview,
+          isVerified: false,
+          isAdmin: false,
           createdAt: serverTimestamp(),
           ...(role === 'Commerçant' ? { shopName, phone, city } : {})
         };
@@ -41,6 +65,7 @@ export const Auth: React.FC<{ onAuth: () => void }> = ({ onAuth }) => {
       onAuth();
     } catch (err: any) {
       setError(err.message);
+      setLoading(false);
     }
   };
 
@@ -88,11 +113,11 @@ export const Auth: React.FC<{ onAuth: () => void }> = ({ onAuth }) => {
       </div>
 
       {/* Right Side: Form */}
-      <div className="flex items-center justify-center p-8 md:p-16 bg-slate-50 lg:bg-white">
+      <div className="flex items-center justify-center p-8 md:p-16 bg-slate-50 lg:bg-white overflow-y-auto">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md"
+          className="w-full max-w-md py-10"
         >
           <div className="mb-10">
             <h2 className="text-4xl font-black text-slate-900 tracking-tight mb-2">
@@ -104,8 +129,36 @@ export const Auth: React.FC<{ onAuth: () => void }> = ({ onAuth }) => {
           </div>
 
           {!isLogin && (
+            <div className="flex flex-col items-center mb-8">
+              <div className="relative group">
+                <div className="w-24 h-24 rounded-full bg-slate-100 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center relative">
+                  {photoPreview ? (
+                    <img src={photoPreview} className="w-full h-full object-cover" alt="Profile" />
+                  ) : (
+                    <User className="w-10 h-10 text-slate-300" />
+                  )}
+                  <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                    <Camera className="w-6 h-6 text-white" />
+                    <input type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} />
+                  </label>
+                </div>
+                {photoPreview && (
+                  <button 
+                    onClick={() => { setPhotoPreview(null); }}
+                    className="absolute -top-1 -right-1 bg-red-500 text-white p-1 rounded-full shadow-md hover:bg-red-600 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-4">Photo de profil</p>
+            </div>
+          )}
+
+          {!isLogin && (
             <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl mb-8">
               <button
+                type="button"
                 onClick={() => setRole('Client')}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${
                   role === 'Client' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
@@ -114,6 +167,7 @@ export const Auth: React.FC<{ onAuth: () => void }> = ({ onAuth }) => {
                 <User className="h-4 w-4" /> Client
               </button>
               <button
+                type="button"
                 onClick={() => setRole('Commerçant')}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${
                   role === 'Commerçant' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
@@ -200,8 +254,10 @@ export const Auth: React.FC<{ onAuth: () => void }> = ({ onAuth }) => {
 
             <button
               type="submit"
-              className="w-full py-5 bg-slate-900 text-white text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-black transition-all shadow-xl shadow-slate-200 mt-6"
+              disabled={loading}
+              className="w-full py-5 bg-slate-900 text-white text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-black transition-all shadow-xl shadow-slate-200 mt-6 flex items-center justify-center gap-2"
             >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               {isLogin ? 'Se connecter' : 'C\'est parti'}
             </button>
 
@@ -220,4 +276,5 @@ export const Auth: React.FC<{ onAuth: () => void }> = ({ onAuth }) => {
     </div>
   );
 };
+
 

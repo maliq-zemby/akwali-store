@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBag, LogOut, MessageCircle, User, PlusCircle } from 'lucide-react';
+import { ShoppingBag, LogOut, MessageCircle, User, PlusCircle, Store, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 import { auth } from '@/src/lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -8,8 +8,8 @@ import { UserProfile } from '@/src/hooks/useAuth';
 
 interface NavbarProps {
   profile: UserProfile | null;
-  activeTab: 'home' | 'chat' | 'publish';
-  setActiveTab: (tab: 'home' | 'chat' | 'publish') => void;
+  activeTab: 'home' | 'chat' | 'publish' | 'dashboard' | 'profile' | 'admin';
+  setActiveTab: (tab: 'home' | 'chat' | 'publish' | 'dashboard' | 'profile' | 'admin') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ profile, activeTab, setActiveTab }) => {
@@ -40,7 +40,11 @@ export const Navbar: React.FC<NavbarProps> = ({ profile, activeTab, setActiveTab
           {[
             { id: 'home', label: 'Marché' },
             { id: 'chat', label: 'Communauté' },
-            ...(profile?.role === 'Commerçant' ? [{ id: 'publish', label: 'Vendre' }] : []),
+            ...(profile?.role === 'Commerçant' ? [
+              { id: 'publish', label: 'Vendre' },
+              { id: 'dashboard', label: 'Ma Boutique' }
+            ] : []),
+            ...(profile?.isAdmin ? [{ id: 'admin', label: 'Certification' }] : []),
           ].map((link) => (
             <button
               key={link.id}
@@ -64,14 +68,24 @@ export const Navbar: React.FC<NavbarProps> = ({ profile, activeTab, setActiveTab
 
         {/* Zone 3: Actions */}
         <div className="flex items-center gap-6 shrink-0">
-          <div className="hidden sm:flex flex-col items-end">
-            <span className="text-sm font-bold text-slate-900">
-              {profile?.role === 'Commerçant' ? profile.shopName : profile?.email.split('@')[0]}
+          <div 
+            className="hidden sm:flex flex-col items-end cursor-pointer group"
+            onClick={() => setActiveTab('profile')}
+          >
+            <span className={`text-sm font-bold transition-colors ${activeTab === 'profile' ? 'text-gabon-blue' : 'text-slate-900 group-hover:text-gabon-blue'}`}>
+              {profile?.role === 'Commerçant' ? profile.shopName : (profile?.displayName || profile?.email.split('@')[0])}
             </span>
             <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-none mt-0.5">
               {profile?.role}
             </span>
           </div>
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`p-2.5 rounded-xl transition-all duration-300 ${activeTab === 'profile' ? 'bg-gabon-blue/10 text-gabon-blue' : 'text-slate-400 hover:text-gabon-blue hover:bg-slate-50'}`}
+            title="Mon Profil"
+          >
+            <User className="h-5 w-5" />
+          </button>
           <button
             onClick={handleSignOut}
             className="p-2.5 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all duration-300"
@@ -87,7 +101,12 @@ export const Navbar: React.FC<NavbarProps> = ({ profile, activeTab, setActiveTab
         {[
           { id: 'home', icon: ShoppingBag, label: 'Marché' },
           { id: 'chat', icon: MessageCircle, label: 'Chat' },
-          ...(profile?.role === 'Commerçant' ? [{ id: 'publish', icon: PlusCircle, label: 'Vendre' }] : []),
+          ...(profile?.role === 'Commerçant' ? [
+            { id: 'publish', icon: PlusCircle, label: 'Vendre' },
+            { id: 'dashboard', icon: Store, label: 'Boutique' }
+          ] : []),
+          ...(profile?.isAdmin ? [{ id: 'admin', icon: ShieldCheck, label: 'Certif' }] : []),
+          { id: 'profile', icon: User, label: 'Profil' },
         ].map((link) => (
           <button 
             key={link.id}

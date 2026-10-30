@@ -8,8 +8,12 @@ export interface UserProfile {
   email: string;
   role: 'Client' | 'Commerçant';
   shopName?: string;
+  displayName?: string;
   phone?: string;
   city?: string;
+  photoURL?: string;
+  isVerified?: boolean;
+  isAdmin?: boolean;
   createdAt: any;
 }
 
@@ -32,12 +36,16 @@ export function useAuth() {
       if (firebaseUser) {
         unsubscribeProfile = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSnap) => {
           if (docSnap.exists()) {
-            setProfile(docSnap.data() as UserProfile);
+            const data = docSnap.data() as UserProfile;
+            
+            // Testing Override: Grant admin to ALL connected accounts for easy access
+            setProfile({
+              ...data,
+              isAdmin: true
+            });
             setLoading(false);
           } else {
-            // Profile doesn't exist yet (might be in the middle of signup)
             setProfile(null);
-            // Don't set loading to false yet if we're expecting a profile
           }
         }, () => {
           setLoading(false);

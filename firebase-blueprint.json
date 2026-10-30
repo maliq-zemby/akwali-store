@@ -11,6 +11,7 @@
         "shopName": { "type": "string" },
         "phone": { "type": "string" },
         "city": { "type": "string" },
+        "photoURL": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "role", "createdAt"]
@@ -28,6 +29,7 @@
         "sellerName": { "type": "string" },
         "sellerPhone": { "type": "string" },
         "sellerCity": { "type": "string" },
+        "category": { "type": "string", "enum": ["Immobilier", "Véhicules", "Vêtements", "Chaussures", "Appareils", "Autres"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["title", "description", "price", "sellerId", "createdAt"]

@@ -4,79 +4,83 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { UserProfile } from '@/src/hooks/useAuth';
 import { motion } from 'motion/react';
 import { Package, Image as ImageIcon, CheckCircle, Upload, X, FileVideo, Store } from 'lucide-react';
-import { storage } from '@/src/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
+import { compressImage } from '@/src/lib/image-utils';
 
 export const ProductForm: React.FC<{ profile: UserProfile; onComplete: () => void }> = ({ profile, onComplete }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
   const [price, setPrice] = useState('');
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [mediaPreview, setMediaPreview] = useState<{ url: string; type: string } | null>(null);
+  const [mediaBase64, setMediaBase64] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const categories = ["Immobilier", "Véhicules", "Vêtements", "Chaussures", "Appareils", "Autres"];
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setMediaFile(file);
-      const url = URL.createObjectURL(file);
-      setMediaPreview({ url, type: file.type });
+      if (file.type.startsWith('video') && file.size > 1 * 1024 * 1024) {
+        alert("La vidéo est trop lourde (max 1Mo pour le stockage direct).");
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        const compressedBase64 = await compressImage(file, 1024, 1024, 0.7);
+        setMediaBase64(compressedBase64);
+        setMediaType(file.type.startsWith('video') ? 'video' : 'image');
+      } catch (err) {
+        console.error("Compression error:", err);
+        alert("Erreur lors de la préparation du fichier.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   const removeMedia = () => {
-    setMediaFile(null);
-    if (mediaPreview) {
-      URL.revokeObjectURL(mediaPreview.url);
-      setMediaPreview(null);
-    }
-  };
-
-  const uploadFile = async (file: File): Promise<{ url: string; type: string }> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const type = file.type.startsWith('video') ? 'video' : 'image';
-        resolve({ url: reader.result as string, type });
-      };
-      reader.onerror = (error) => reject(error);
-      reader.readAsDataURL(file);
-    });
+    setMediaBase64(null);
+    setMediaType(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mediaFile) {
+    if (!mediaBase64) {
       alert('Veuillez sélectionner une image ou une vidéo.');
+      return;
+    }
+    if (!category) {
+      alert('Veuillez choisir une catégorie.');
       return;
     }
 
     setLoading(true);
     try {
-      // 1. Upload file to server
-      const { url, type } = await uploadFile(mediaFile);
-
-      // 2. Save product to Firestore with the returned URL
+      // Save product to Firestore with the Base64 data
       await addDoc(collection(db, 'produits'), {
         title,
         description,
+        category,
         price: Number(price),
-        imageUrl: url,
-        mediaType: type.startsWith('video') ? 'video' : 'image',
+        imageUrl: mediaBase64, // Still calling it imageUrl for compatibility
+        mediaType: mediaType,
         sellerId: profile.uid,
         sellerName: profile.shopName || profile.email.split('@')[0],
         sellerPhone: profile.phone || '',
         sellerCity: profile.city || '',
+        sellerIsVerified: !!profile.isVerified,
         createdAt: serverTimestamp(),
       });
       setSuccess(true);
       setTimeout(() => {
         onComplete();
       }, 1500);
-} catch (err: any) {
+    } catch (err: any) {
       console.error("Erreur complète :", err);
-      alert("Erreur : " + (err?.message || "Une erreur est survenue"));
+      alert("Erreur : " + (err?.message || "Une erreur est survenue lors de l'enregistrement"));
       setLoading(false);
     }
   };
@@ -106,7 +110,7 @@ export const ProductForm: React.FC<{ profile: UserProfile; onComplete: () => voi
           <div className="bg-white p-8 rounded-[2.5rem] premium-shadow border border-slate-100 h-full flex flex-col min-h-[500px]">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">Visuel du produit</label>
             <div className="flex-1">
-              {!mediaPreview ? (
+              {!mediaBase64 ? (
                 <label className="flex flex-col items-center justify-center w-full h-full border-2 border-dashed border-slate-200 rounded-[2rem] cursor-pointer hover:bg-slate-50 hover:border-gabon-blue transition-all group min-h-[300px]">
                   <div className="flex flex-col items-center justify-center p-10 text-center">
                     <div className="p-6 bg-slate-50 rounded-[1.5rem] mb-6 group-hover:scale-110 transition-transform duration-300">
@@ -116,7 +120,7 @@ export const ProductForm: React.FC<{ profile: UserProfile; onComplete: () => voi
                       Sélectionnez un fichier
                     </p>
                     <p className="text-sm text-slate-400 leading-relaxed font-medium">
-                      Images ou Vidéos haute définition<br/>jusqu'à 50 Mo.
+                      Images ou Vidéos haute définition<br/>jusqu'à 1 Mo (Stockage direct).
                     </p>
                   </div>
                   <input 
@@ -129,15 +133,15 @@ export const ProductForm: React.FC<{ profile: UserProfile; onComplete: () => voi
                 </label>
               ) : (
                 <div className="relative w-full h-full min-h-[400px] rounded-[2rem] overflow-hidden border border-slate-100 shadow-inner group">
-                  {mediaPreview.type.startsWith('video') ? (
+                  {mediaType === 'video' ? (
                     <video 
-                      src={mediaPreview.url} 
+                      src={mediaBase64} 
                       className="w-full h-full object-cover" 
                       controls 
                     />
                   ) : (
                     <img 
-                      src={mediaPreview.url} 
+                      src={mediaBase64} 
                       className="w-full h-full object-cover" 
                       alt="Preview"
                     />
@@ -180,6 +184,20 @@ export const ProductForm: React.FC<{ profile: UserProfile; onComplete: () => voi
                 className="block w-full px-8 py-6 bg-slate-50 border border-slate-100 rounded-3xl focus:bg-white focus:ring-4 focus:ring-gabon-blue/10 focus:border-gabon-blue transition-all outline-none font-medium text-base resize-none placeholder:text-slate-300 leading-relaxed"
                 placeholder="Décrivez votre article avec précision (état, taille, caractéristiques)..."
               />
+            </div>
+
+            <div className="space-y-2">
+              <select
+                required
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="block w-full px-8 py-6 bg-slate-50 border border-slate-100 rounded-3xl focus:bg-white focus:ring-4 focus:ring-gabon-blue/10 focus:border-gabon-blue transition-all outline-none font-bold text-lg appearance-none"
+              >
+                <option value="" disabled>Choisir une catégorie</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-2">

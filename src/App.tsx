@@ -5,13 +5,15 @@ import { Navbar } from '@/src/components/Navbar';
 import { ProductList } from '@/src/components/ProductList';
 import { ProductForm } from '@/src/components/ProductForm';
 import { Chat } from '@/src/components/Chat';
+import { ProfileSettings } from '@/src/components/ProfileSettings';
 import { motion, AnimatePresence } from 'motion/react';
 import { OfflineIndicator } from '@/src/components/OfflineIndicator';
 import { PWAInstallButton } from '@/src/components/PWAInstallButton';
+import { AdminCertification } from '@/src/components/AdminCertification';
 
 export default function App() {
   const { user, profile, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'publish'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'publish' | 'dashboard' | 'profile' | 'admin'>('home');
 
   if (loading) {
     return (
@@ -70,7 +72,43 @@ export default function App() {
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.2 }}
             >
-              <ProductForm profile={profile} onComplete={() => setActiveTab('home')} />
+              <ProductForm profile={profile} onComplete={() => setActiveTab('dashboard')} />
+            </motion.div>
+          )}
+
+          {activeTab === 'dashboard' && profile.role === 'Commerçant' && (
+            <motion.div
+              key="dashboard"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ProductList merchantId={user.uid} />
+            </motion.div>
+          )}
+
+          {activeTab === 'profile' && (
+            <motion.div
+              key="profile"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ProfileSettings profile={profile} onComplete={() => setActiveTab('home')} />
+            </motion.div>
+          )}
+
+          {activeTab === 'admin' && profile.isAdmin && (
+            <motion.div
+              key="admin"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <AdminCertification />
             </motion.div>
           )}
         </AnimatePresence>
