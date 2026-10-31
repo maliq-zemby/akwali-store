@@ -37,7 +37,10 @@ body {
 }
 
 /* Hide Netlify Badge */
-#netlify-badge, iframe[src*="netlify"] {
+#netlify-badge, iframe[src*="netlify"], div[style*="z-index: 9999"] {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
