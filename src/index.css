@@ -36,3 +36,8 @@ body {
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05), 0 4px 10px -5px rgba(0, 0, 0, 0.02);
 }
 
+/* Hide Netlify Badge */
+#netlify-badge, iframe[src*="netlify"] {
+  display: none !important;
+}
+
